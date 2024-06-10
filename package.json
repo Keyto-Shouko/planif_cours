@@ -1,0 +1,31 @@
+{
+  "name": "planif_cours",
+  "version": "1.0.0",
+  "description": "un projet scolaire qui a pour but de créer un programme pour planifier automatiquement les cours",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Keyto-Shouko/planif_cours.git"
+  },
+  "keywords": [
+    "js",
+    "node",
+    "cours",
+    "automatisation",
+    "algorithme",
+    "planification"
+  ],
+  "author": "Bruno Alves Carvalho",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Keyto-Shouko/planif_cours/issues"
+  },
+  "homepage": "https://github.com/Keyto-Shouko/planif_cours#readme",
+  "dependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "jest": "^29.7.0"
+  }
+}

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "un projet scolaire qui a pour but de créer un programme pour planifier automatiquement les cours",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "test"
   },

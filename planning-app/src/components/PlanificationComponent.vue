@@ -1,7 +1,10 @@
 <template>
   <div>
     <UploadComponent @file-uploaded="handleFileUploaded" />
-    <button @click="runPlanning" class="turquoise-button">Run Planning</button>
+    <button @click="runPlanning">Run Planning</button>
+    <a v-if="planningResults.length" :href="downloadUrl" download="result.csv">
+      Download Result
+    </a>
     <RenderedTable v-if="planningResults.length" :modules="planningResults" />
   </div>
 </template>
@@ -19,19 +22,15 @@ export default {
     return {
       worksheet: [],
       planningResults: [],
+      downloadUrl: 'http://localhost:3000/download' // URL to download the CSV file
     };
   },
   methods: {
     handleFileUploaded(worksheet) {
-      console.log("PlanificationComponent - Received worksheet:", worksheet);
       this.worksheet = worksheet;
     },
     async runPlanning() {
-      console.log("Run Planning button clicked");
       try {
-        // Clear existing planning results
-        this.planningResults = [];
-
         const response = await fetch(
           "http://localhost:3000/api/planification",
           {
@@ -45,8 +44,6 @@ export default {
         const data = await response.json();
         const result = data.result;
 
-        console.log("Result from server:", result);
-
         this.planningResults = this.processPlanningResult(result);
       } catch (error) {
         console.error("Error running planning:", error);
@@ -55,8 +52,8 @@ export default {
     processPlanningResult(result) {
       return result.map((course) => ({
         name: course.name,
-        dates: course.days, // Assuming `days` is an array of dates
-        remainingHours: course.semester1Volume, // Assuming `semester1Volume` represents the remaining hours
+        dates: course.days,
+        remainingHours: course.semester1Volume,
       }));
     },
   },
@@ -64,29 +61,27 @@ export default {
 </script>
 
 <style scoped>
-/* Button style */
-.turquoise-button {
+button {
   background-color: #40e0d0;
-  color: black;
+  color: white;
   border: none;
   padding: 10px 20px;
   cursor: pointer;
-  font-size: 16px;
-  border-radius: 4px;
+  border-radius: 5px;
 }
 
-/* Table header style */
-table th {
+a {
+  display: inline-block;
+  margin-top: 10px;
+  color: #40e0d0;
+  text-decoration: none;
+  padding: 10px 20px;
+  border: 1px solid #40e0d0;
+  border-radius: 5px;
+}
+
+a:hover {
   background-color: #40e0d0;
-  color: black;
-  padding: 10px;
-  text-align: left;
-}
-
-/* Table cell style (optional) */
-table td {
-  padding: 8px;
-  text-align: left;
-  border: 1px solid #ddd;
+  color: white;
 }
 </style>

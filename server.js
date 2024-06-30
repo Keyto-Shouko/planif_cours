@@ -5,13 +5,18 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import fs from "fs";
 import weeksData from "./dates.js"; // Assurez-vous que dates.js exporte weeksData
-
+import path from 'path';
+import { fileURLToPath } from 'url';
 const app = express();
 const port = 3000;
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const downloadDir = path.join(__dirname, 'download');
+const filePath = path.join(downloadDir, 'result.csv');
 app.use(bodyParser.json());
 app.use(cors());
 
+// Those are the constraints weights, they will be used to augment the priority of the courses based on the constraints they have
 const constraintsWeight = {
   fullDay: 5,
   dayPart: 2,
@@ -24,6 +29,11 @@ const constraintsWeight = {
   hasPriority: 0,
 };
 
+/**
+ * This function will re-order the courses based on the new priorities
+ * @param {*} courses 
+ * @returns 
+ */
 function reOrderCourses(courses) {
   //copy the course array and sort it by priority so we don't modify the original array
   const sortedCourses = [...courses];
@@ -31,13 +41,18 @@ function reOrderCourses(courses) {
   return sortedCourses;
 }
 
+/**
+ * Takes courses and give it a priority based on constraints and weights
+ * @param {*} courses 
+ * @param {*} constraintsWeight 
+ * @param {*} modifyPriorityFlag 
+ */
 function defineCoursePriority(
   courses,
   constraintsWeight,
   modifyPriorityFlag = false
 ) {
-  //here, i should augment the priority of the current course i'm analysing
-  // the more constaints it has, the higher the priority gets based on the constaintsWeight
+  // the more constaints it has, the higher the priority gets based on the constraintsWeight
   // the unique exception is the "mandatoryCourse", this one should augment the priority of the course referenced in the array
   // loop through the courses, but before that, we need to reset the priority of all the courses to 0
   courses.forEach((course) => (course.priority = 0));
@@ -110,13 +125,17 @@ function defineCoursePriority(
   }
   //re-order the courses based on the new priorities
   reOrderCourses(courses);
-  //if the flag is true, call the function to modify the priority of the courses already placed
+  //if the flag is true, call the function to modify the priority of the courses already placed (WIP, may not stay)
   if (modifyPriorityFlag) {
     modifyPriority(courses, constraintsWeight);
   }
 }
 
-// this function will serve to modify priority of courses already placed based on the hours left to place and also if the course was a prio or not
+/**
+ * this function will serve to modify priority of courses already placed based on the hours left to place and also if the course was a prio or not
+ * @param {*} courses 
+ * @param {*} constraintsWeight 
+ */
 function modifyPriority(courses, constraintsWeight) {
   //loop through the courses
   for (const course of courses) {
@@ -147,62 +166,72 @@ function modifyPriority(courses, constraintsWeight) {
     }
   }
 }
+
+// Helper function to place a course on a specific day and part of the day
+function placeCourse(course, week, dayIndex, partOfDay, reOrganizedCourses) {
+  //check the partOfDay, if it's null or undefined it means there is a problem with the data sent, so we return an error
+  if (partOfDay === null || partOfDay === undefined) {
+    console.log(
+      "The partOfDay is null or undefined, this should not happen. Please check the data sent."
+    );
+    return;
+  }
+
+  if (course.constraints.semester1Volume <= 0) {
+    // Remove course if its volume is 0 or less
+    const courseIndex = reOrganizedCourses.findIndex(
+      (c) => c.name === course.name
+    );
+    if (courseIndex > -1) {
+      reOrganizedCourses.splice(courseIndex, 1);
+    }
+  } else {
+    if (weeksData[week][partOfDay][dayIndex].course === null) {
+      weeksData[week][partOfDay][dayIndex].course = course.name;
+      course.constraints.semester1Volume -= 3.5;
+    }
+  }
+}
+
+/**
+ * Place the courses on available weeks
+ * @param {*} weeksData 
+ * @param {*} coursesData 
+ * @returns 
+ */
 function defineCourseDay(weeksData, coursesData) {
   //we first call the function to re-order the courses based on the new priorities
   let reOrganizedCourses = reOrderCourses(coursesData);
   // Initialize the week index
   let weekIndex = 0;
 
-  // Helper function to place a course on a specific day and part of the day
-  function placeCourse(course, week, dayIndex, partOfDay) {
-    //check the partOfDay, if it's null or undefined it means there is a problem with the data sent, so we return an error
-    if (partOfDay === null || partOfDay === undefined) {
-      console.log(
-        "The partOfDay is null or undefined, this should not happen. Please check the data sent."
-      );
-      return;
-    }
-
-    if (course.constraints.semester1Volume <= 0) {
-      // Remove course if its volume is 0 or less
-      const courseIndex = reOrganizedCourses.findIndex(
-        (c) => c.name === course.name
-      );
-      if (courseIndex > -1) {
-        reOrganizedCourses.splice(courseIndex, 1);
-      }
-    } else {
-      if (weeksData[week][partOfDay][dayIndex].course === null) {
-        weeksData[week][partOfDay][dayIndex].course = course.name;
-        course.constraints.semester1Volume -= 3.5;
-      }
-    }
-  }
+  
 
   // Main loop to place courses based on priorities and constraints
   while (reOrganizedCourses.length > 0 && weekIndex < weeksData.length) {
     for (let i = weekIndex; i < weeksData.length; i++) {
+      // Get a week
       const week = weeksData[i];
-
-      // Sort courses by priority
-      //coursesData.sort((a, b) => b.priority - a.priority);
-
+      // loop through the courses
       for (const course of reOrganizedCourses) {
+        // Get the course constraints
         const constraints = course.constraints;
 
         // Check fixedDay constraint
         if (constraints.fixedDay !== null) {
           // Handle consecutiveDays constraint
           if (constraints.consecutiveDays) {
+            // Check if the consecutiveDays must be full ones
             if (constraints.fullDay) {
+              // Check if the course can be placed on the fixed day and the next one
               if (
                 week.morning[course.constraints.fixedDay].course === null &&
                 week.evening[course.constraints.fixedDay].course === null &&
                 week.morning[course.constraints.fixedDay + 1].course === null &&
                 week.evening[course.constraints.fixedDay + 1].course === null
               ) {
-                placeCourse(course, i, course.constraints.fixedDay, "morning");
-                placeCourse(course, i, course.constraints.fixedDay, "evening");
+                placeCourse(course, i, course.constraints.fixedDay, "morning", reOrganizedCourses);
+                placeCourse(course, i, course.constraints.fixedDay, "evening", reOrganizedCourses);
                 placeCourse(
                   course,
                   i,
@@ -217,6 +246,7 @@ function defineCourseDay(weeksData, coursesData) {
                 );
               }
             } else {
+              // Check if the course has consecutive days but not full days, also check if the morning/evening is available for both days
               if (
                 week[constraints.dayPart][course.constraints.fixedDay]
                   .course === null &&
@@ -227,44 +257,53 @@ function defineCourseDay(weeksData, coursesData) {
                   course,
                   i,
                   course.constraints.fixedDay,
-                  constraints.dayPart
+                  constraints.dayPart,
+                  reOrganizedCourses
                 );
                 placeCourse(
                   course,
                   i,
                   course.constraints.fixedDay + 1,
-                  constraints.dayPart
+                  constraints.dayPart,
+                  reOrganizedCourses
                 );
               }
             }
+            // Here we don't check for consecutive days anymore, we check if the course can be placed on the fixed day
           } else if (constraints.fullDay) {
-            placeCourse(course, i, constraints.fixedDay, "morning");
-            placeCourse(course, i, constraints.fixedDay, "evening");
+            // place the course on the whole day
+            placeCourse(course, i, constraints.fixedDay, "morning", reOrganizedCourses);
+            placeCourse(course, i, constraints.fixedDay, "evening", reOrganizedCourses);
           } else {
-            placeCourse(course, i, constraints.fixedDay, constraints.dayPart);
+            //place the course on the fixed day and the part of the day
+            placeCourse(course, i, constraints.fixedDay, constraints.dayPart, reOrganizedCourses);
           }
+          // Below, we don't have a fixed day constraint
         } else {
           // Place course on the first available day, if no days were found then we increase the weekIndex by 1. Once the course is placed, we de-crease the weekIndex by 1
           for (let j = 0; j <= 5; j++) {
             let increasedWeekIndex = false;
             if (j === 5) {
               console.log("Couldn't place the course ", course.name);
+              // If the course couldn't be placed, we go to the next week
               weekIndex++;
               increasedWeekIndex = true;
               break;
             }
+            // Check if the course has a full day constraint and if it has no consecutive days
             if (constraints.fullDay && constraints.consecutiveDays == false) {
               if (
                 week.morning[j].course === null &&
                 week.evening[j].course === null
               ) {
-                placeCourse(course, i, j, "morning");
-                placeCourse(course, i, j, "evening");
+                placeCourse(course, i, j, "morning", reOrganizedCourses);
+                placeCourse(course, i, j, "evening", reOrganizedCourses);
                 if (increasedWeekIndex) {
                   weekIndex--;
                   increasedWeekIndex = false;
                 }
               }
+              // Check if the course has a full day constraint and if it has consecutive days
             } else if (constraints.fullDay && constraints.consecutiveDays) {
               if (
                 week.morning[j].course === null &&
@@ -272,18 +311,19 @@ function defineCourseDay(weeksData, coursesData) {
                 week.morning[j + 1].course === null &&
                 week.evening[j + 1].course === null
               ) {
-                placeCourse(course, i, j, "morning");
-                placeCourse(course, i, j, "evening");
-                placeCourse(course, i, j + 1, "morning");
-                placeCourse(course, i, j + 1, "evening");
+                placeCourse(course, i, j, "morning", reOrganizedCourses);
+                placeCourse(course, i, j, "evening", reOrganizedCourses);
+                placeCourse(course, i, j + 1, "morning", reOrganizedCourses);
+                placeCourse(course, i, j + 1, "evening", reOrganizedCourses);
                 if (increasedWeekIndex) {
                   weekIndex--;
                   increasedWeekIndex = false;
                 }
               }
             } else {
+              // Check if the course has a dayPart constraint
               if (week[constraints.dayPart][j].course === null) {
-                placeCourse(course, i, j, constraints.dayPart);
+                placeCourse(course, i, j, constraints.dayPart, reOrganizedCourses);
                 if (increasedWeekIndex) {
                   weekIndex--;
                   increasedWeekIndex = false;
@@ -325,7 +365,13 @@ function defineCourseDay(weeksData, coursesData) {
   return weeksData;
 }
 
+/**
+ * This function will transform the worksheet data to a format that can be used by the algorithm
+ * @param {*} worksheet 
+ * @returns 
+ */
 function transformData(worksheet) {
+  // Map the days to their index
   const daysMap = {
     lundi: 0,
     mardi: 1,
@@ -366,7 +412,7 @@ function transformData(worksheet) {
       semester2Volume: volumeS2,
       fullDay: fullDay,
       dayPart: dayPart,
-      sections: ["devs"],
+      sections: [],
       mandatoryCourse: [],
       consecutiveDays: false,
       hasPriority: 0,
@@ -383,6 +429,11 @@ function transformData(worksheet) {
   });
 }
 
+/**
+ * Transform a date string to French format (more readable)
+ * @param {*} dateString 
+ * @returns 
+ */
 function formatDateToFrench(dateString) {
   console.log("dateString", dateString);
   const [year, month, day] = dateString.split("-");
@@ -397,6 +448,7 @@ function formatDateToFrench(dateString) {
   return frenchDate;
 }
 
+// Define the API endpoint to receive the worksheet data and do the planification
 app.post("/api/planification", (req, res) => {
   //reset the datas to their initial state
   let coursesData = [];
@@ -416,7 +468,7 @@ app.post("/api/planification", (req, res) => {
   result = defineCourseDay(weeksData, coursesData);
 
   // Prepare the result as a response
-  csv = "course,days,volume left\n";
+  csv = "Module;Dates;Heures restantes\n";
   for (const course of coursesData) {
     let days = [];
     for (const week of result) {
@@ -438,7 +490,7 @@ app.post("/api/planification", (req, res) => {
     csv += `"${course.name}";"${daysString}";${course.constraints.semester1Volume}\n`;
   }
 
-  fs.writeFileSync("result.csv", csv);
+  fs.writeFileSync(filePath, csv);
   console.log("CSV file has been generated successfully.");
   //We should not send the result as it is, it is better to send something similar to the csv file. So the modules with their attributed dates and hours left
   let resultToSend = [];
@@ -470,8 +522,19 @@ app.post("/api/planification", (req, res) => {
     });
   }
   // log the result with all the dates etc
-  console.log("The result is:", result);
+  //console.log("The result is:", result);
   res.json({ success: true, result: resultToSend });
+});
+
+// Serve the CSV file
+app.get('/download', (req, res) => {
+  console.log("Downloading file...");
+  res.download(filePath, 'result.csv', (err) => {
+    if (err) {
+      console.error("Error downloading file:", err);
+      res.status(500).send("Error downloading file");
+    }
+  });
 });
 
 app.listen(port, () => {

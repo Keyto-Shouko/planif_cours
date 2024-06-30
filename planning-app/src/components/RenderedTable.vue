@@ -10,14 +10,14 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="course in formattedResults" :key="course.name">
-          <td>{{ course.name }}</td>
+        <tr v-for="module in modules" :key="module.name">
+          <td>{{ module.name }}</td>
           <td>
             <ul>
-              <li v-for="date in course.dates" :key="date">{{ date }}</li>
+              <li v-for="date in module.dates" :key="date">{{ date }}</li>
             </ul>
           </td>
-          <td>{{ course.remainingHours }}</td>
+          <td>{{ module.remainingHours }}</td>
         </tr>
       </tbody>
     </table>
@@ -25,19 +25,8 @@
 </template>
 
 <script>
-import { formatDateToFrench } from "../utils/dateUtils";
-
 export default {
-  props: ["results"],
-  computed: {
-    formattedResults() {
-      return this.results.map((course) => ({
-        name: course.name,
-        dates: course.dates.map((date) => formatDateToFrench(date)), // Format dates
-        remainingHours: course.remainingHours,
-      }));
-    },
-  },
+  props: ["modules"],
 };
 </script>
 
@@ -54,7 +43,6 @@ td {
 }
 th {
   background-color: #40e0d0;
-  color: white;
 }
 ul {
   padding-left: 20px; /* Indent list */

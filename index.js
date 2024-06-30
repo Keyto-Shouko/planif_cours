@@ -1,8 +1,7 @@
 //import the dates from dates.js
-import weeksData  from "./dates.js";
+import weeksData from "./dates.js";
 // other imports
 import fs from "fs";
-
 
 // ---------------------------------------- Fake Data Courses ----------------------------------------
 const coursesData = [
@@ -18,7 +17,6 @@ const coursesData = [
       mandatoryCourse: [], // cours qui doit avoir lieu avant le début de celui-ci
       consecutiveDays: false,
       hasPriority: 0, // si le cours est une priorité, il ne peut pas être déplacé
-      
     },
     initialVolume1: 10.5,
     initialVolume2: 10.5,
@@ -37,7 +35,6 @@ const coursesData = [
       mandatoryCourse: ["Anglais"], // cours qui doit avoir lieu avant le début de celui-ci
       consecutiveDays: false,
       hasPriority: 0, // si le cours est une priorité, il ne peut pas être déplacé
-      
     },
     initialVolume1: 35,
     initialVolume2: 0,
@@ -56,7 +53,6 @@ const coursesData = [
       mandatoryCourse: [], // cours qui doit avoir lieu avant le début de celui-ci
       consecutiveDays: false,
       hasPriority: 0, // si le cours est une priorité, il ne peut pas être déplacé
-      
     },
     initialVolume1: 35,
     initialVolume2: 0,
@@ -75,7 +71,6 @@ const coursesData = [
       mandatoryCourse: ["Tests"], // cours qui doit avoir lieu avant le début de celui-ci
       consecutiveDays: false,
       hasPriority: 0, // si le cours est une priorité, il ne peut pas être déplacé
-      
     },
     initialVolume1: 17.5,
     initialVolume2: 17.5,
@@ -86,7 +81,7 @@ const coursesData = [
     name: "Tests",
     constraints: {
       fixedDay: 1,
-      semester1Volume: 35,
+      semester1Volume: 28,
       semester2Volume: 0,
       fullDay: true,
       dayPart: null,
@@ -94,7 +89,6 @@ const coursesData = [
       mandatoryCourse: [], // cours qui doit avoir lieu avant le début de celui-ci
       consecutiveDays: true,
       hasPriority: 0, // si le cours est une priorité, il ne peut pas être déplacé
-      
     },
     initialVolume1: 35,
     initialVolume2: 0,
@@ -126,7 +120,11 @@ function reOrderCourses(courses) {
   return sortedCourses;
 }
 
-function defineCoursePriority(courses, constraintsWeight, modifyPriorityFlag = false) {
+function defineCoursePriority(
+  courses,
+  constraintsWeight,
+  modifyPriorityFlag = false
+) {
   //here, i should augment the priority of the current course i'm analysing
   // the more constaints it has, the higher the priority gets based on the constaintsWeight
   // the unique exception is the "mandatoryCourse", this one should augment the priority of the course referenced in the array
@@ -202,7 +200,7 @@ function defineCoursePriority(courses, constraintsWeight, modifyPriorityFlag = f
   //re-order the courses based on the new priorities
   reOrderCourses(courses);
   //if the flag is true, call the function to modify the priority of the courses already placed
-  if(modifyPriorityFlag){
+  if (modifyPriorityFlag) {
     modifyPriority(courses, constraintsWeight);
   }
 }
@@ -211,32 +209,32 @@ function defineCoursePriority(courses, constraintsWeight, modifyPriorityFlag = f
 function modifyPriority(courses, constraintsWeight) {
   //loop through the courses
   for (const course of courses) {
-//check the courses constraints, if its hasPrioority is higer than 0, decreease its prio ny the weight x the hasPriority
-if (course.constraints.hasPriority > 0) {
-  course.priority -= constraintsWeight.hasPriority * course.constraints.hasPriority;
-  // also set it to -1 so we know this course is no longer a priority
-  course.constraints.hasPriority = -1;
-}
-// check the semester volume, if it is over 0, decrase the priority by an ammount based on the difference between the initial volume and the current volume
-// the base wieght is 35, so we calculate an ammount like follow : 
-// if the course had 10.5 hours initially, it means it can be placed 3 times, if it has 7 hours left, it means it can be placed 2 times
-// so it means it has been placed at 33%, thus we reduce the priority by 35 - 35 * 0.33 and we round up
-if (course.constraints.semester1Volume > 0) {
-  const initialVolume = course.initialVolume1;
-  const currentVolume = course.constraints.semester1Volume;
-  const percentage = currentVolume / initialVolume;
-  const weight = constraintsWeight.semester1Volume;
-  course.priority -= Math.ceil(weight - weight * percentage);
-}
-if (course.constraints.semester2Volume > 0) {
-  const initialVolume = course.initialVolume2;
-  const currentVolume = course.constraints.semester2Volume;
-  const percentage = currentVolume / initialVolume;
-  const weight = constraintsWeight.semester2Volume;
-  course.priority -= Math.ceil(weight - weight * percentage);
-}
+    //check the courses constraints, if its hasPrioority is higer than 0, decreease its prio ny the weight x the hasPriority
+    if (course.constraints.hasPriority > 0) {
+      course.priority -=
+        constraintsWeight.hasPriority * course.constraints.hasPriority;
+      // also set it to -1 so we know this course is no longer a priority
+      course.constraints.hasPriority = -1;
+    }
+    // check the semester volume, if it is over 0, decrase the priority by an ammount based on the difference between the initial volume and the current volume
+    // the base wieght is 35, so we calculate an ammount like follow :
+    // if the course had 10.5 hours initially, it means it can be placed 3 times, if it has 7 hours left, it means it can be placed 2 times
+    // so it means it has been placed at 33%, thus we reduce the priority by 35 - 35 * 0.33 and we round up
+    if (course.constraints.semester1Volume > 0) {
+      const initialVolume = course.initialVolume1;
+      const currentVolume = course.constraints.semester1Volume;
+      const percentage = currentVolume / initialVolume;
+      const weight = constraintsWeight.semester1Volume;
+      course.priority -= Math.ceil(weight - weight * percentage);
+    }
+    if (course.constraints.semester2Volume > 0) {
+      const initialVolume = course.initialVolume2;
+      const currentVolume = course.constraints.semester2Volume;
+      const percentage = currentVolume / initialVolume;
+      const weight = constraintsWeight.semester2Volume;
+      course.priority -= Math.ceil(weight - weight * percentage);
+    }
   }
-
 }
 function defineCourseDay(weeksData, coursesData) {
   //we first call the function to re-order the courses based on the new priorities
@@ -253,17 +251,19 @@ function defineCourseDay(weeksData, coursesData) {
       );
       return;
     }
-    if (weeksData[week][partOfDay][dayIndex].course === null) {
-      weeksData[week][partOfDay][dayIndex].course = course.name;
-      course.constraints.semester1Volume -= 3.5;
-      if (course.constraints.semester1Volume <= 0) {
-        // Remove course if its volume is 0 or less
-        const courseIndex = reOrganizedCourses.findIndex(
-          (c) => c.name === course.name
-        );
-        if (courseIndex > -1) {
-          reOrganizedCourses.splice(courseIndex, 1);
-        }
+
+    if (course.constraints.semester1Volume <= 0) {
+      // Remove course if its volume is 0 or less
+      const courseIndex = reOrganizedCourses.findIndex(
+        (c) => c.name === course.name
+      );
+      if (courseIndex > -1) {
+        reOrganizedCourses.splice(courseIndex, 1);
+      }
+    } else {
+      if (weeksData[week][partOfDay][dayIndex].course === null) {
+        weeksData[week][partOfDay][dayIndex].course = course.name;
+        course.constraints.semester1Volume -= 3.5;
       }
     }
   }
@@ -282,7 +282,7 @@ function defineCourseDay(weeksData, coursesData) {
         // Check fixedDay constraint
         if (constraints.fixedDay !== null) {
           // Handle consecutiveDays constraint
-        if (constraints.consecutiveDays) {
+          if (constraints.consecutiveDays) {
             if (constraints.fullDay) {
               if (
                 week.morning[course.constraints.fixedDay].course === null &&
@@ -292,20 +292,41 @@ function defineCourseDay(weeksData, coursesData) {
               ) {
                 placeCourse(course, i, course.constraints.fixedDay, "morning");
                 placeCourse(course, i, course.constraints.fixedDay, "evening");
-                placeCourse(course, i, course.constraints.fixedDay + 1, "morning");
-                placeCourse(course, i, course.constraints.fixedDay + 1, "evening");
+                placeCourse(
+                  course,
+                  i,
+                  course.constraints.fixedDay + 1,
+                  "morning"
+                );
+                placeCourse(
+                  course,
+                  i,
+                  course.constraints.fixedDay + 1,
+                  "evening"
+                );
               }
             } else {
               if (
-                week[constraints.dayPart][course.constraints.fixedDay].course === null &&
-                week[constraints.dayPart][course.constraints.fixedDay + 1].course === null
+                week[constraints.dayPart][course.constraints.fixedDay]
+                  .course === null &&
+                week[constraints.dayPart][course.constraints.fixedDay + 1]
+                  .course === null
               ) {
-                placeCourse(course, i, course.constraints.fixedDay, constraints.dayPart);
-                placeCourse(course, i, course.constraints.fixedDay + 1, constraints.dayPart);
+                placeCourse(
+                  course,
+                  i,
+                  course.constraints.fixedDay,
+                  constraints.dayPart
+                );
+                placeCourse(
+                  course,
+                  i,
+                  course.constraints.fixedDay + 1,
+                  constraints.dayPart
+                );
               }
             }
-        }
-           else if (constraints.fullDay) {
+          } else if (constraints.fullDay) {
             placeCourse(course, i, constraints.fixedDay, "morning");
             placeCourse(course, i, constraints.fixedDay, "evening");
           } else {
@@ -315,7 +336,7 @@ function defineCourseDay(weeksData, coursesData) {
           // Place course on the first available day, if no days were found then we increase the weekIndex by 1. Once the course is placed, we de-crease the weekIndex by 1
           for (let j = 0; j <= 5; j++) {
             let increasedWeekIndex = false;
-            if(j === 5){
+            if (j === 5) {
               console.log("Couldn't place the course ", course.name);
               weekIndex++;
               increasedWeekIndex = true;
@@ -328,7 +349,7 @@ function defineCourseDay(weeksData, coursesData) {
               ) {
                 placeCourse(course, i, j, "morning");
                 placeCourse(course, i, j, "evening");
-                if(increasedWeekIndex){
+                if (increasedWeekIndex) {
                   weekIndex--;
                   increasedWeekIndex = false;
                 }
@@ -344,7 +365,7 @@ function defineCourseDay(weeksData, coursesData) {
                 placeCourse(course, i, j, "evening");
                 placeCourse(course, i, j + 1, "morning");
                 placeCourse(course, i, j + 1, "evening");
-                if(increasedWeekIndex){
+                if (increasedWeekIndex) {
                   weekIndex--;
                   increasedWeekIndex = false;
                 }
@@ -352,7 +373,7 @@ function defineCourseDay(weeksData, coursesData) {
             } else {
               if (week[constraints.dayPart][j].course === null) {
                 placeCourse(course, i, j, constraints.dayPart);
-                if(increasedWeekIndex){
+                if (increasedWeekIndex) {
                   weekIndex--;
                   increasedWeekIndex = false;
                 }
@@ -361,10 +382,13 @@ function defineCourseDay(weeksData, coursesData) {
           }
         }
 
-        
         // Recalculate priorities after placing courses
         let modifyPriorityFlag = true;
-      defineCoursePriority(reOrganizedCourses, constraintsWeight, modifyPriorityFlag);
+        defineCoursePriority(
+          reOrganizedCourses,
+          constraintsWeight,
+          modifyPriorityFlag
+        );
       }
 
       // Increment week index if the week is full
@@ -374,8 +398,6 @@ function defineCourseDay(weeksData, coursesData) {
       ) {
         weekIndex++;
       }
-
-      
 
       // If there are no more courses to place, break out of the loop
       if (reOrganizedCourses.length === 0) {

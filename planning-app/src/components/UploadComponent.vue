@@ -1,3 +1,4 @@
+<!-- UploadComponent.vue -->
 <template>
   <div>
     <input type="file" @change="handleFileUpload" />
@@ -22,9 +23,6 @@ export default {
           { header: 1 }
         );
 
-        // Log the content of the worksheet to the console
-        console.log("Worksheet content:", worksheet);
-
         this.$emit("file-uploaded", worksheet);
       };
 
@@ -33,3 +31,16 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+/* Input file style */
+.turquoise-input {
+  background-color: #40e0d0;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 4px;
+}
+</style>
